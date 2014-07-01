@@ -21,17 +21,7 @@ class Node(object):
         self.dist_function = dist_function
         self.left = left
         self.right = right
-        self.nn = None
-
-    def get_nn(self):
-        """ Return the nearest neighbor found by the last operation. """
-        return self.nn
-
-    def get_left(self):
-        return self.left
-
-    def get_right(self):
-        return self.right
+        self.nn = None  # Nearest neighbor found by last operation
 
     def __str__(self):
         return "-".join(str(node) for node in self.__iter__())
@@ -92,44 +82,38 @@ class Node(object):
 
 
 class UPGMA(object):
+    """ An efficient implementation of an UPGMA tree.
+
+    An UPGMA tree is constructed using the O(n^2) approach detailed in:
+    Gronau I, Moran S (2007) Optimal implementations of UPGMA and
+    other common clustering algorithms.
+
+    Nodes are clustered according to their proximity, determined by
+    the distance function (function must take two parameters and
+    return a numeric distance).
+
+    The tree is contained in the `tree` field. The tree is just a
+    pointer to the root Node object (under which all child nodes
+    reside).
+    """
     def __init__(self, taxa, dist_function):
-        """ Build an efficient UPGMA tree.
-
-        Build a UPGMA tree using the O(n^2) approach detailed in: Gronau
-        I, Moran S (2007) Optimal implementations of UPGMA and other
-        common clustering algorithms.
-
-        Nodes are clustered according to their proximity, determined by
-        the distance function (function must take two parameters and
-        return a numeric distance).
-        """
         clusters = set([Node(dist_function, taxon) for taxon in taxa])
         self.dist_function = dist_function
         self.build_tree(clusters)
 
-    def get_tree(self):
-        """ Return the UPGMA tree.
-
-        The "tree" is just a pointer to the root Node object, which
-        contains all the other Nodes as its children.
-        """
-        return self.tree
-
     def get_largest_branch(self):
         """ Return the branch with more final taxa (not counting OTU's). """
-        if self.tree.get_right() is None:
+        if self.tree.right is None:
             #print "No right branch, returning left branch."
-            return self.tree.get_left()
-
-        elif self.tree.get_left() is None:
+            return self.tree.left
+        elif self.tree.left is None:
             #print "No left branch, returning right branch."
-            return self.tree.get_right()
+            return self.tree.right
 
-        elif len(self.tree.get_right()) > len(self.tree.get_left()):
-            return self.tree.get_right()
-
+        elif len(self.tree.right) > len(self.tree.left):
+            return self.tree.right
         else:
-            return self.tree.get_left()
+            return self.tree.left
 
     def build_tree(self, clusters):
         """ Build the UPGMA tree.
@@ -157,7 +141,7 @@ class UPGMA(object):
             # Recalculate NN's for each cluster previously having one of the
             # joined clusters as its NN
             for node in clusters:
-                if (node.get_nn() == c1) or (node.get_nn() == c2):
+                if (node.nn == c1) or (node.nn == c2):
                     node.update_distances(clusters)
 
         # At this point "clusters" contains just the root of the tree
@@ -175,8 +159,8 @@ class UPGMA(object):
             if (min_dist is None) or (node.dist_to_NN < min_dist):
                 min_dist = node.dist_to_NN
                 c1 = node
-                c2 = node.get_nn()
-                assert node.get_nn() is not None
+                c2 = node.nn
+                assert c2 is not None
         #print "Clusters {} and {} closest".format(c1, c2)
         return (c1, c2)
 
@@ -189,4 +173,4 @@ if __name__ == '__main__':
     from random import randint
     random_integers = [randint(0, 200) for i in range(8)]
     print "Initial clusters: {}".format(random_integers)
-    print UPGMA(random_integers, simple_diff).get_tree()
+    print UPGMA(random_integers, simple_diff).tree
